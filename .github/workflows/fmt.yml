@@ -48,7 +48,7 @@ jobs:
       if: steps.check-changes.outputs.changes == 'true'
       uses: thollander/actions-comment-pull-request@v3
       with:
-        comment_tag: check-cargofmt
+        comment-tag: check-cargofmt
         message: |-
           Thank you for sending us a great Pull Request! 👍
           Please run auto format 🙏
@@ -60,10 +60,10 @@ jobs:
       if: steps.check-changes.outputs.changes == 'false'
       uses: thollander/actions-comment-pull-request@v3
       with:
-        comment_tag: check-cargofmt
-        mode: delete
+        comment-tag: check-cargofmt
+        mode: recreate
         message: "Thank you!"
-        create_if_not_exists: false
+        create-if-not-exists: false
 
     - name: Make failure if changes are detected
       if: steps.check-changes.outputs.changes == 'true'
