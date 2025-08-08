@@ -17,4 +17,5 @@ ENV PKG_CONFIG_SYSROOT_DIR="/musl/x86_64-linux-musl-cross/"
 ENV RUST_TARGET="x86_64-unknown-linux-musl"
 ENV BINDGEN_EXTRA_CLANG_ARGS="--sysroot /musl/x86_64-linux-musl-cross/x86_64-linux-musl"
 ENV CARGO_BUILD_TARGET=x86_64-unknown-linux-musl
+ENV RUST_BACKTRACE=1
 CMD ["bash"]

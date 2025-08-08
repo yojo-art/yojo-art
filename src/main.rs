@@ -33,19 +33,39 @@ impl IntoResponse for ServerError {
 }
 impl ServerError {
 	pub fn new(status: StatusCode, text: String) -> Self {
+		sentry::capture_message(&text, sentry::Level::Error);
+		Self { status, text }
+	}
+	pub fn new_error<E>(status: StatusCode, e: E) -> Self
+	where
+		E: std::error::Error + Send + Sync + 'static,
+	{
+		let text = format!("{} {:?}",std::any::type_name::<E>(), e);
+		sentry::integrations::anyhow::capture_anyhow(&anyhow::Error::new(e));
 		Self { status, text }
 	}
 }
-impl<T> From<T> for ServerError
-where
-	T: std::fmt::Debug,
-{
-	fn from(value: T) -> Self {
+macro_rules! impl_convert_error_to_servererror {
+	( $($t:ty),* ) => {
+	$( impl From<$t> for ServerError
+	{
+		fn from(e:$t) -> Self
+		{
+			Self::new_error(StatusCode::INTERNAL_SERVER_ERROR,e)
+		}
+	}) *
+	}
+}
+impl From<&str> for ServerError {
+	fn from(s: &str) -> Self {
 		Self {
 			status: StatusCode::INTERNAL_SERVER_ERROR,
-			text: format!("{} {:?}",std::any::type_name::<T>(), value),
+			text: format!("{:?}", s),
 		}
 	}
+}
+impl_convert_error_to_servererror! {
+	diesel::result::Error,serde_json::Error,diesel_async::pooled_connection::bb8::RunError,redis::RedisError
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -81,6 +101,8 @@ pub struct MisskeyConfig {
 	redis_for_pubsub: Option<RedisConfig>,
 	#[serde(rename = "redisForTimelines")]
 	redis_for_timelines: Option<RedisConfig>,
+	#[serde(rename = "sentryForBackend")]
+	sentry_for_backend: Option<SentryConfig>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ParsedMisskeyConfig {
@@ -107,6 +129,14 @@ impl From<MisskeyConfig> for ParsedMisskeyConfig {
 			host,
 		}
 	}
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SentryConfig {
+	options: SentryOptions,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SentryOptions {
+	dsn: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RedisConfig {
@@ -236,6 +266,21 @@ fn main() {
 	}
 	let misskey_config: MisskeyConfig =
 		serde_yaml::from_reader(std::fs::File::open(&".config/default.yml").unwrap()).unwrap();
+	let _sentry_guard = if let Some(config) = misskey_config.sentry_for_backend.as_ref() {
+		let sentry_guard = sentry::init((
+			config.options.dsn.as_str(),
+			sentry::ClientOptions {
+				release: sentry::release_name!(),
+				// Capture user IPs and potentially sensitive headers when using HTTP server integrations
+				// see https://docs.sentry.io/platforms/rust/data-management/data-collected for more info
+				send_default_pii: true,
+				..Default::default()
+			},
+		));
+		Some(sentry_guard)
+	} else {
+		None
+	};
 	let parsed_misskey_config: ParsedMisskeyConfig = misskey_config.clone().into();
 	let misskey_config = Arc::new(misskey_config);
 	let parsed_misskey_config = Arc::new(parsed_misskey_config);

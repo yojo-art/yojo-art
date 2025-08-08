@@ -59,6 +59,11 @@ bigdecimal = "*"
 
 redis = { version = "0.26", features = ["tokio-comp"] }
 
+#error tracking
+#defaultのtransportがnative-tlsを含んでてその依存関係のnative-tlsが依存するopenssl-sysのビルドに失敗する
+sentry={version="0.41.0", default-features = false, features = ["rustls","panic","reqwest","backtrace","contexts","debug-images","release-health","tower","anyhow"]}
+anyhow="*"
+
 #[profile.dev]
 #opt-level = 1
 
