@@ -4,3 +4,4 @@
 /valkey
 /.config/*
 Cargo.lock
+/rustfs*

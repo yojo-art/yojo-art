@@ -75,16 +75,16 @@ services:
       test: "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"
       interval: 5s
       retries: 20
-  minio-server:
-    image: quay.io/minio/minio
+  s3:
+    image: rustfs/rustfs:latest
     restart: always
     env_file:
       - .config/docker.env
-    command: server /data --console-address ":9001"
     volumes:
-      - ./minio/:/data
+      - ./rustfs/:/data
+      - ./rustfs-logs/:/logs
     ports:
-      - "19521:9001"
+      - "19511:9001"
     networks:
       - internal_network
       - external_network
